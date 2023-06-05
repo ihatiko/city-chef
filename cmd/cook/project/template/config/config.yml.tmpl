@@ -1,0 +1,12 @@
+server:
+  name: file-server
+  http:
+    Port: :10001
+    timeout: 15
+    readTimeout: 5
+    writeTimeout: 5
+  grpc:
+    Port: :20001
+    timeout: 15
+    maxConnectionIdle: 5
+    maxConnectionAge: 5
