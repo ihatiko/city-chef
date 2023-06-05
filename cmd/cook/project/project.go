@@ -33,17 +33,20 @@ func Command() *cobra.Command {
 }
 
 func process(prefix, destination string, obj any) {
-	dir, err := structure.ReadDir(filepath.ToSlash(prefix))
+	dir, err := structure.ReadDir(prefix)
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, fs := range dir {
-		secondPath := filepath.Join(prefix, fs.Name())
+	for _, fl := range dir {
+		secondPath := filepath.Join(prefix, fl.Name())
 
-		if fs.IsDir() {
-			err := os.Mkdir(filepath.Join(destination, secondPath), os.ModePerm)
-			if err != nil {
-				log.Fatal(err)
+		if fl.IsDir() {
+			directory := cleanPath(secondPath)
+			newDirectoryPath := filepath.Join(destination, directory)
+			Mkdir(newDirectoryPath)
+
+			if checkWindows() {
+				secondPath = filepath.ToSlash(secondPath)
 			}
 			process(secondPath, destination, obj)
 			continue
@@ -52,9 +55,24 @@ func process(prefix, destination string, obj any) {
 		buildFile(secondPath, destination, obj)
 	}
 }
+func checkWindows() bool {
+	return os.Getenv("GOOS") == "windows" ||
+		strings.Contains(strings.ToLower(os.Getenv("OS")), "windows")
+}
+
+func cleanPath(path string) string {
+	if checkWindows() {
+		path = filepath.ToSlash(path)
+	}
+	result, _ := strings.CutPrefix(path, "template/")
+	return result
+}
 
 func buildFile(secondPath string, folder string, obj any) {
-	b, err := structure.ReadFile(filepath.ToSlash(secondPath))
+	if checkWindows() {
+		secondPath = filepath.ToSlash(secondPath)
+	}
+	b, err := structure.ReadFile(secondPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,7 +81,7 @@ func buildFile(secondPath string, folder string, obj any) {
 		log.Fatal(err)
 	}
 	parsedPath, _ := strings.CutSuffix(secondPath, ".tmpl")
-	parsedPath, _ = strings.CutPrefix(parsedPath, "template\\")
+	parsedPath = cleanPath(parsedPath)
 
 	filePath := filepath.Join(folder, parsedPath)
 	f, err := os.Create(filePath)
